@@ -1,4 +1,5 @@
 #include "ftl.h"
+#include "fcl.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -56,7 +57,7 @@ static int ftl_allocate_free_page(int excluded_block, int *block, int *page)
             continue;
         }
 
-        is_bad = nand_is_bad_block(next_block);
+        is_bad = fcl_is_bad_block(next_block);
         if (is_bad < 0) {
             return FTL_ERR_NAND;
         }
@@ -95,7 +96,7 @@ static int ftl_block_score(int block, int *invalid_pages, int *valid_pages)
         return FTL_ERR_INVALID;
     }
 
-    bad = nand_is_bad_block(block);
+    bad = fcl_is_bad_block(block);
     if (bad < 0) {
         return FTL_ERR_NAND;
     }
@@ -219,7 +220,7 @@ int ftl_write(int lba, const unsigned char *buf)
         }
     }
 
-    rc = nand_program(block, page, buf);
+    rc = fcl_program(block, page, buf);
     if (rc != NAND_OK) {
         return FTL_ERR_NAND;
     }
@@ -251,7 +252,7 @@ int ftl_read(int lba, unsigned char *buf)
         return FTL_ERR_UNMAPPED;
     }
 
-    if (nand_read(mapping_table[lba].block, mapping_table[lba].page, buf) != NAND_OK) {
+    if (fcl_read(mapping_table[lba].block, mapping_table[lba].page, buf) != NAND_OK) {
         return FTL_ERR_NAND;
     }
 
@@ -297,7 +298,7 @@ int ftl_garbage_collect(void)
                 return FTL_ERR_NAND;
             }
 
-            rc = nand_read(victim_block, p, temp);
+            rc = fcl_read(victim_block, p, temp);
             if (rc != NAND_OK) {
                 return FTL_ERR_NAND;
             }
@@ -313,7 +314,7 @@ int ftl_garbage_collect(void)
                 return FTL_ERR_NO_SPACE;
             }
 
-            rc = nand_program(new_block, new_page, temp);
+            rc = fcl_program(new_block, new_page, temp);
             if (rc != NAND_OK) {
                 return FTL_ERR_NAND;
             }
@@ -333,7 +334,7 @@ int ftl_garbage_collect(void)
         }
     }
 
-    rc = nand_erase(victim_block);
+    rc = fcl_erase(victim_block);
     if (rc != NAND_OK) {
         return FTL_ERR_NAND;
     }
