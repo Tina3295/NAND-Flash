@@ -8,8 +8,10 @@ int main(void)
 {
     unsigned char page_data[PAGE_SIZE];
     unsigned char read_back[PAGE_SIZE];
+    FtlStats ftl_stats;
     unsigned int count;
     int i;
+    int lba;
     int old_block;
     int old_page;
     int new_block;
@@ -181,6 +183,72 @@ int main(void)
 
     printf("LBA 100 old PPA = (%d, %d)\n", old_block, old_page);
     printf("LBA 100 new PPA = (%d, %d)\n", new_block, new_page);
-    puts("NAND flash + basic FTL simulation OK");
+
+    ftl_init();
+
+    for (lba = 0; lba < 8; lba++) {
+        memset(page_data, lba + 1, sizeof(page_data));
+        if (ftl_write(lba, page_data) != FTL_OK) {
+            puts("ftl_write initial data failed");
+            return 1;
+        }
+    }
+
+    memset(page_data, 0xA1, sizeof(page_data));
+    if (ftl_write(1, page_data) != FTL_OK) {
+        puts("ftl rewrite lba 1 failed");
+        return 1;
+    }
+    memset(page_data, 0xA3, sizeof(page_data));
+    if (ftl_write(3, page_data) != FTL_OK) {
+        puts("ftl rewrite lba 3 failed");
+        return 1;
+    }
+    memset(page_data, 0xA5, sizeof(page_data));
+    if (ftl_write(5, page_data) != FTL_OK) {
+        puts("ftl rewrite lba 5 failed");
+        return 1;
+    }
+
+    if (ftl_garbage_collect() != FTL_OK) {
+        puts("manual garbage collection failed");
+        return 1;
+    }
+
+    if (ftl_read(1, read_back) != FTL_OK || read_back[0] != 0xA1) {
+        puts("gc verify lba 1 failed");
+        return 1;
+    }
+    if (ftl_read(3, read_back) != FTL_OK || read_back[0] != 0xA3) {
+        puts("gc verify lba 3 failed");
+        return 1;
+    }
+    if (ftl_read(5, read_back) != FTL_OK || read_back[0] != 0xA5) {
+        puts("gc verify lba 5 failed");
+        return 1;
+    }
+    if (ftl_read(0, read_back) != FTL_OK || read_back[0] != 0x01) {
+        puts("gc verify lba 0 failed");
+        return 1;
+    }
+
+    if (ftl_get_stats(&ftl_stats) != FTL_OK) {
+        puts("ftl_get_stats failed");
+        return 1;
+    }
+    if (ftl_stats.gc_count == 0 ||
+        ftl_stats.page_migration_count == 0 ||
+        ftl_stats.valid_pages_copied == 0 ||
+        ftl_stats.erase_count == 0) {
+        puts("gc stats should be non-zero after garbage collection");
+        return 1;
+    }
+
+    printf("GC count = %u\n", ftl_stats.gc_count);
+    printf("Page migration count = %u\n", ftl_stats.page_migration_count);
+    printf("Valid pages copied = %u\n", ftl_stats.valid_pages_copied);
+    printf("Erase count (GC) = %u\n", ftl_stats.erase_count);
+    printf("Write amplification = %.3f\n", ftl_get_write_amplification());
+    puts("NAND flash + FTL + GC simulation OK");
     return 0;
 }
