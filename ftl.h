@@ -31,6 +31,7 @@ void ftl_init(void);
 int ftl_write(int lba, const unsigned char *buf);
 int ftl_read(int lba, unsigned char *buf);
 int ftl_get_mapping(int lba, int *block, int *page);
+int ftl_trim(int lba);
 int ftl_garbage_collect(void);
 int ftl_get_stats(FtlStats *stats);
 double ftl_get_write_amplification(void);

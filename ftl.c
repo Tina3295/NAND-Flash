@@ -274,6 +274,23 @@ int ftl_get_mapping(int lba, int *block, int *page)
     return FTL_OK;
 }
 
+int ftl_trim(int lba)
+{
+    if (!ftl_valid_lba(lba)) {
+        return FTL_ERR_INVALID;
+    }
+    if (!mapping_table[lba].valid) {
+        return FTL_ERR_UNMAPPED;
+    }
+
+    page_state[mapping_table[lba].block][mapping_table[lba].page] = PAGE_INVALID;
+    page_owner_lba[mapping_table[lba].block][mapping_table[lba].page] = -1;
+    mapping_table[lba].block = -1;
+    mapping_table[lba].page = -1;
+    mapping_table[lba].valid = 0;
+    return FTL_OK;
+}
+
 int ftl_garbage_collect(void)
 {
     int victim_block;
